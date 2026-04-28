@@ -19,22 +19,22 @@
   --kip-anchor:     #FF00FF;
 
   /* Background / surface system */
-  --bg-void:    #050508;
-  --bg-deep:    #080810;
-  --bg-surface: #0f0f1e;
-  --bg-raised:  #16162a;
-  --bg-hover:   #1e1e36;
+  --bg-void:    #f8f9fb;
+  --bg-deep:    rgba(255, 255, 255, 0.4);
+  --bg-surface: rgba(255, 255, 255, 0.65);
+  --bg-raised:  rgba(255, 255, 255, 0.9);
+  --bg-hover:   rgba(255, 255, 255, 1);
 
   /* Text */
-  --text-primary:   #e8e8f0;
-  --text-secondary: #8888aa;
-  --text-muted:     #444466;
+  --text-primary:   #232333;
+  --text-secondary: #6a6a7c;
+  --text-muted:     #a0a0b5;
   --text-accent:    var(--kip-safe);
 
   /* Borders */
-  --border-dim:    rgba(255,255,255,0.06);
-  --border-medium: rgba(255,255,255,0.12);
-  --border-accent: rgba(11, 218, 81, 0.35);
+  --border-dim:    rgba(0, 0, 0, 0.04);
+  --border-medium: rgba(0, 0, 0, 0.08);
+  --border-accent: rgba(11, 218, 81, 0.4);
 
   /* Typography */
   --font-display: 'Orbitron',  'Share Tech Mono', monospace;
@@ -74,6 +74,11 @@ html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
   background: var(--bg-void);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(179, 136, 255, 0.08), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(41, 121, 255, 0.08), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(11, 218, 81, 0.06), transparent 50%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-ui);
   font-weight: 400;
@@ -225,6 +230,7 @@ code, pre {
   font-size: 0.85rem;
   padding: 10px 14px;
   outline: none;
+  backdrop-filter: blur(12px);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 
@@ -254,9 +260,11 @@ code, pre {
 /* ─── Cards / Panels ─────────────────────────────────── */
 .kip-panel {
   background: var(--bg-surface);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--border-dim);
   border-radius: var(--r-md);
   padding: var(--sp-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02);
 }
 
 .kip-panel.accent {

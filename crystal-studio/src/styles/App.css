@@ -11,8 +11,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(8, 8, 16, 0.85);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border-dim);
   display: flex;
   align-items: center;
@@ -43,6 +43,7 @@
   border: 1px solid var(--border-dim);
   border-radius: var(--r-sm);
   padding: 3px;
+  backdrop-filter: blur(8px);
 }
 
 .nav-tab {
@@ -143,11 +144,12 @@
   right: var(--sp-xl);
   z-index: 9000;
   background: var(--bg-raised);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--kip-caution);
   border-radius: var(--r-md);
   padding: var(--sp-md) var(--sp-lg);
   max-width: 400px;
-  box-shadow: var(--glow-caution);
+  box-shadow: 0 12px 40px rgba(255, 191, 0, 0.15);
 }
 
 .defect-toast h4 {
@@ -209,9 +211,11 @@
 
 .facet-section {
   background: var(--bg-surface);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--border-dim);
   border-radius: var(--r-md);
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.02);
 }
 
 .facet-section-header {
@@ -250,9 +254,11 @@
 /* ─── Preview Canvas card ─────────────────────────────── */
 .preview-card {
   background: var(--bg-surface);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--border-dim);
   border-radius: var(--r-md);
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.02);
 }
 
 .preview-card-header {
@@ -362,9 +368,11 @@
 
 .crystal-info-item {
   background: var(--bg-surface);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-dim);
   border-radius: var(--r-md);
   padding: var(--sp-md);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.01);
 }
 
 .crystal-info-item label {
@@ -393,9 +401,11 @@
 
 .facet-accordion-item {
   background: var(--bg-surface);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-dim);
   border-radius: var(--r-md);
   overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.01);
 }
 
 .facet-accordion-trigger {
@@ -439,6 +449,7 @@
 
 .refract-result {
   background: var(--bg-surface);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-accent);
   border-radius: var(--r-md);
   padding: var(--sp-lg);
@@ -448,6 +459,7 @@
   white-space: pre-wrap;
   line-height: 1.7;
   min-height: 120px;
+  box-shadow: 0 12px 32px rgba(11,218,81,0.05);
 }
 
 /* State indicator strip */
@@ -485,13 +497,14 @@
 }
 
 .caution-modal {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
+  backdrop-filter: blur(24px);
   border: 2px solid var(--kip-caution);
   border-radius: var(--r-lg);
   padding: var(--sp-xl);
   max-width: 440px;
   width: 90%;
-  box-shadow: var(--glow-caution), 0 24px 60px rgba(0,0,0,0.6);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.1), 0 0 40px rgba(255, 191, 0, 0.15);
 }
 
 .caution-modal h3 {
