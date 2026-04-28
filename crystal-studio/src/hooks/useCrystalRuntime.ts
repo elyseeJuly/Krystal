@@ -10,16 +10,16 @@ import { useReducer, useCallback, useEffect } from 'react';
 import {
   crystalReducer,
   initialCrystalState,
-  CrystalAction,
+  type CrystalAction,
 } from '../core/CrystalRuntime';
 import {
   KrystalDecoder,
   KrystalEncoder,
   XtalValidator,
   SigilForge,
-  KipPayload,
-  BandGapLevel,
-  CrystalRuntimeState,
+  type KipPayload,
+  type BandGapLevel,
+  type CrystalRuntimeState,
 } from '../core';
 
 export interface UseCrystalRuntimeReturn {

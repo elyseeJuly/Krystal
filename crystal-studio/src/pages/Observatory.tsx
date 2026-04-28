@@ -8,7 +8,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { KipPayload, BAND_GAP_COLORS, BandGapLevel } from '../core';
+import { type KipPayload, BAND_GAP_COLORS, type BandGapLevel } from '../core';
 import { BAND_GAP_LABELS } from '../hooks/useCrystalRuntime';
 
 interface ObservatoryProps {

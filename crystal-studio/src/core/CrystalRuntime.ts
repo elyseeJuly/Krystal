@@ -8,7 +8,7 @@
  * Author: Emberois | SPEC-KIP-0.1
  */
 
-import { CrystalState, CrystalEvent, CrystalRuntimeState } from './types';
+import type { CrystalState, CrystalEvent, CrystalRuntimeState } from './types';
 
 // ─────────────────────────────────────────────
 // State Transition Table

@@ -11,10 +11,10 @@
  */
 
 import {
-  KipPayload,
-  BandGapLevel,
+  type KipPayload,
+  type BandGapLevel,
   BAND_GAP_COLORS,
-  ValidationResult,
+  type ValidationResult,
 } from './types';
 
 // ─────────────────────────────────────────────
@@ -30,7 +30,7 @@ const BLACKLIST_IDS: Set<string> = new Set([
 // ─────────────────────────────────────────────
 
 async function sha256Hex(data: Uint8Array): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data as BufferSource);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

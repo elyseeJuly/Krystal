@@ -7,12 +7,12 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  KipPayload,
-  BandGapLevel,
+  type KipPayload,
+  type BandGapLevel,
   BAND_GAP_COLORS,
-  CrystalTier,
+  type CrystalTier,
   SigilForge,
 } from '../core';
 import { BAND_GAP_LABELS } from '../hooks/useCrystalRuntime';

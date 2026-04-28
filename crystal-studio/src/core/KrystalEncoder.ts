@@ -9,7 +9,7 @@
  * Author: Emberois | SPEC-KIP-0.1
  */
 
-import { KipPayload } from './types';
+import type { KipPayload } from './types';
 
 // ─────────────────────────────────────────────
 // CRC-32 for PNG chunk integrity

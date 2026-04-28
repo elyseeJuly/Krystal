@@ -9,4 +9,4 @@ export { XtalValidator } from './XtalValidator';
 export { SigilForge, CANVAS_SIZE, CORE_SIZE, CORE_OFFSET } from './SigilForge';
 export { crystalReducer, initialCrystalState } from './CrystalRuntime';
 export type { CrystalAction } from './CrystalRuntime';
-export * from './types';
+export * from './types'; // (note: interfaces/types in types.ts are automatically stripped by esbuild, but aliased types might need explicit export type)

@@ -12,7 +12,7 @@
  * Author: Emberois | SPEC-KIP-0.1
  */
 
-import { KipPayload, BAND_GAP_COLORS, QUADRANT_LOCK_COLOR } from './types';
+import { type KipPayload, BAND_GAP_COLORS, QUADRANT_LOCK_COLOR } from './types';
 
 // ─────────────────────────────────────────────
 // Canvas Constants
@@ -255,7 +255,7 @@ export class SigilForge {
     // ── Six Facets (Data Filigree borders) ──────
 
     // Crown Facet (top)
-    drawDataFiligree(ctx, CO, 0, CS, CO, payload.facets.crown.systemPrompt ?? payload.facets.crown.name, '[CROWN]', accentColor);
+    drawDataFiligree(ctx, CO, 0, CS, CO, payload.facets.crown.name, '[CROWN]', accentColor);
 
     // Input Facet (upper-right)
     drawDataFiligree(ctx, CO + CS, 0, S - CO - CS, S / 2, payload.facets.input.format, '[INPUT]', accentColor);

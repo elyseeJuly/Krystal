@@ -3,7 +3,7 @@
  * Wires state machine, routing, and global overlays.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCrystalRuntime } from './hooks/useCrystalRuntime';
 import { ForgingPlatform } from './pages/ForgingPlatform';

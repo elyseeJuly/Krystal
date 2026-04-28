@@ -10,7 +10,7 @@
  * Author: Emberois | SPEC-KIP-0.1
  */
 
-import { KipPayload } from './types';
+import type { KipPayload } from './types';
 
 // ─────────────────────────────────────────────
 // PNG chunk parser helpers
