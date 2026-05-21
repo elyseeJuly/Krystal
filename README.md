@@ -55,12 +55,12 @@ Think of it as **"Docker for AI Prompts, but the container is a gemstone."**
 | Document | Description |
 | :------- | :---------- |
 | [**SPEC-KIP-0.1.md**](./SPEC-KIP-0.1.md) | 📋 Core protocol specification (RFC-style) |
-| [**Developer Guide**](./docs/developer-guide.md) | 🔧 Complete implementation guide for AI Agents & developers |
-| [**Module 1**](./docs/modules/Module_1_Architecture_Vocabulary.md) | 🏗️ Architecture & vocabulary reference |
-| [**Module 2**](./docs/modules/Module_2_UI_Visual_Rendering.md) | 🎨 UI rendering & visual physics |
-| [**Module 3**](./docs/modules/Module_3_Data_Parsing_Extraction.md) | 📡 Data parsing & extraction protocol |
-| [**Module 4**](./docs/modules/Module_4_Interaction_Flow_State_Machine.md) | 🔄 Interaction flow & state machine |
-| [**Module 5**](./docs/modules/Module_5_Security_Fallback.md) | 🛡️ Security & offline fallback |
+| [**Developer Guide**](./docs/SPEC_20260424_KIP_DEVELOPER_GUIDE.md) | 🔧 Complete implementation guide for AI Agents & developers |
+| [**Module 1**](./docs/modules/SPEC_20260424_MODULE_1_ARCHITECTURE_VOCABULARY.md) | 🏗️ Architecture & vocabulary reference |
+| [**Module 2**](./docs/modules/SPEC_20260424_MODULE_2_UI_VISUAL_RENDERING.md) | 🎨 UI rendering & visual physics |
+| [**Module 3**](./docs/modules/SPEC_20260424_MODULE_3_DATA_PARSING_EXTRACTION.md) | 📡 Data parsing & extraction protocol |
+| [**Module 4**](./docs/modules/SPEC_20260424_MODULE_4_INTERACTION_FLOW_STATE_MACHINE.md) | 🔄 Interaction flow & state machine |
+| [**Module 5**](./docs/modules/SPEC_20260424_MODULE_5_SECURITY_FALLBACK.md) | 🛡️ Security & offline fallback |
 
 ---
 
@@ -73,7 +73,7 @@ Think of it as **"Docker for AI Prompts, but the container is a gemstone."**
 
 ### For Developers / AI Agents
 1. Read the [**SPEC-KIP-0.1**](./SPEC-KIP-0.1.md) specification
-2. Follow the [**Developer Guide**](./docs/developer-guide.md) for implementation
+2. Follow the [**Developer Guide**](./docs/SPEC_20260424_KIP_DEVELOPER_GUIDE.md) for implementation
 3. Ensure your implementation passes all items in the **Pre-Refraction Checklist**
 
 ---
