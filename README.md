@@ -56,6 +56,13 @@ Think of it as **"Docker for AI Prompts, but the container is a gemstone."**
 | :------- | :---------- |
 | [**SPEC-KIP-0.1.md**](./SPEC-KIP-0.1.md) | 📋 Core protocol specification (RFC-style) |
 | [**Developer Guide**](./docs/SPEC_20260424_KIP_DEVELOPER_GUIDE.md) | 🔧 Complete implementation guide for AI Agents & developers |
+| [**Development Spec**](./docs/SPEC_20260607_CRYSTAL_STUDIO_DEVELOPMENT.md) | 📐 Crystal Studio architecture & coding standards |
+| [**User Guide**](./docs/USERGUIDE_20260607_CRYSTAL_STUDIO.md) | 📖 How to use Crystal Studio step by step |
+| [**Test Suite**](./docs/TEST_20260607_TEST_SUITE.md) | 🧪 Test architecture & coverage (60 tests, 4 files) |
+| [**Project Audit**](./docs/AUDIT_20260607_PROJECT_AUDIT.md) | 🔍 Full SPEC compliance & code quality audit |
+| [**Development Plan**](./docs/PLAN_20260607_DEVELOPMENT_PLAN.md) | 🗺️ Phase 0–5 roadmap & remaining tasks |
+| [**Dev Process Log**](./docs/HIST_20260607_DEVELOPMENT_PROCESS.md) | 📝 Chronological development record |
+| [**Phase Summary**](./docs/SUMMARY_20260607_PHASE_COMPLETION.md) | 📊 Milestone completion report |
 | [**Module 1**](./docs/modules/SPEC_20260424_MODULE_1_ARCHITECTURE_VOCABULARY.md) | 🏗️ Architecture & vocabulary reference |
 | [**Module 2**](./docs/modules/SPEC_20260424_MODULE_2_UI_VISUAL_RENDERING.md) | 🎨 UI rendering & visual physics |
 | [**Module 3**](./docs/modules/SPEC_20260424_MODULE_3_DATA_PARSING_EXTRACTION.md) | 📡 Data parsing & extraction protocol |
@@ -67,14 +74,16 @@ Think of it as **"Docker for AI Prompts, but the container is a gemstone."**
 ## 🚀 Quick Start
 
 ### For End Users
-1. Open **Crystal Studio** (coming soon)
-2. Load a `.krys` file
-3. The Crystal auto-validates, disperses into interactive Facets, and refracts through your AI model
+1. Open **Crystal Studio** — `http://localhost:5773`
+2. **Forge tab**: Paste text or upload a document → click "一键生成" → download `.krys` file
+3. **Observe tab**: Drag a `.krys` file to view its facets or execute it through an AI model
+4. **Cluster tab**: Compose multiple Krystals into a multi-agent workflow
 
-### For Developers / AI Agents
+### For Developers
 1. Read the [**SPEC-KIP-0.1**](./SPEC-KIP-0.1.md) specification
 2. Follow the [**Developer Guide**](./docs/SPEC_20260424_KIP_DEVELOPER_GUIDE.md) for implementation
-3. Ensure your implementation passes all items in the **Pre-Refraction Checklist**
+3. Run tests: `cd crystal-studio && npm test` (60 tests, 4 files)
+4. Build: `cd crystal-studio && npm run build`
 
 ---
 
