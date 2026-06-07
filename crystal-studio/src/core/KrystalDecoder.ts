@@ -147,7 +147,7 @@ export function parseLightTrack(ocrText: string): LightTrackResult {
   const result: LightTrackResult = {};
 
   for (const anchor of ANCHOR_KEYWORDS) {
-    const key = anchor.replace(/[\[\]]/g, '').toLowerCase();
+    const key = anchor.replace(/[[]]/g, '').toLowerCase();
     const idx = ocrText.indexOf(anchor);
     if (idx === -1) continue;
 

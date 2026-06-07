@@ -4,6 +4,7 @@
  */
 
 export { KrystalDecoder, parseLightTrack, ANCHOR_KEYWORDS } from './KrystalDecoder';
+export type { LightTrackResult, AnchorKeyword } from './KrystalDecoder';
 export { KrystalEncoder } from './KrystalEncoder';
 export { XtalValidator } from './XtalValidator';
 export { SigilForge, CANVAS_SIZE, CORE_SIZE, CORE_OFFSET } from './SigilForge';

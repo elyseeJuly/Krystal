@@ -1,6 +1,9 @@
 /**
  * App.tsx — Crystal Studio Root Shell
  * Wires state machine, routing, and global overlays.
+ *
+ * KIP Level 2 Full Conformance
+ * Author: Emberois | SPEC-KIP-0.1
  */
 
 import { useState } from 'react';
@@ -8,10 +11,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCrystalRuntime } from './hooks/useCrystalRuntime';
 import { ForgingPlatform } from './pages/ForgingPlatform';
 import { Observatory } from './pages/Observatory';
+import { ClusterWorkshop } from './pages/ClusterWorkshop';
 import './index.css';
 import './styles/App.css';
 
-type Tab = 'forge' | 'observe';
+type Tab = 'forge' | 'observe' | 'cluster';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('forge');
@@ -21,6 +25,13 @@ function App() {
     crystallize,
     refract,
     cleavage,
+    tryLightTrack,
+    lightTrackResult,
+    recrystallizePayload,
+    refractResult,
+    isRefracting,
+    modelConfig,
+    setModelConfig,
   } = useCrystalRuntime();
 
   const isForging = runtimeState.state === 'MOUNTING' || runtimeState.state === 'VALIDATING';
@@ -29,23 +40,31 @@ function App() {
   const [showCautionModal, setShowCautionModal] = useState(false);
   const [pendingRefract, setPendingRefract] = useState(false);
 
-  const handleRefract = () => {
+  const handleRefract = async (userInput?: string) => {
     const level = runtimeState.payload?.bandGapLevel;
     if (level === 'restricted') {
       setShowCautionModal(true);
       setPendingRefract(false);
-    } else if (level === 'caution') {
+      return;
+    }
+    if (level === 'caution') {
       setShowCautionModal(true);
       setPendingRefract(true);
-    } else {
-      refract();
+      return;
+    }
+    await refract(userInput);
+  };
+
+  const confirmRefract = async () => {
+    setShowCautionModal(false);
+    if (pendingRefract) {
+      await refract();
     }
   };
 
-  const confirmRefract = () => {
-    setShowCautionModal(false);
-    if (pendingRefract) refract();
-    // restricted: no refract — user must cleavage
+  // ── Recrystallize: load existing payload into forge ──
+  const handleRecrystallize = () => {
+    setActiveTab('forge');
   };
 
   return (
@@ -70,6 +89,12 @@ function App() {
           >
             观测站 OBSERVE
           </button>
+          <button
+            className={`nav-tab${activeTab === 'cluster' ? ' active' : ''}`}
+            onClick={() => setActiveTab('cluster')}
+          >
+            晶簇 CLUSTER
+          </button>
         </div>
 
         <div className="nav-status">
@@ -85,17 +110,41 @@ function App() {
       {/* ── Main ── */}
       <main className="main-content">
         <AnimatePresence mode="wait">
-          {activeTab === 'forge' ? (
+          {activeTab === 'forge' && (
             <motion.div key="forge" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ForgingPlatform onCrystallize={crystallize} isForging={isForging} />
+              <ForgingPlatform
+                key={recrystallizePayload?.crystalId ?? 'new'}
+                onCrystallize={crystallize}
+                isForging={isForging}
+                recrystallizePayload={recrystallizePayload}
+              />
             </motion.div>
-          ) : (
+          )}
+          {activeTab === 'observe' && (
             <motion.div key="observe" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Observatory
                 runtimeState={runtimeState}
                 onLoad={loadKrys}
                 onRefract={handleRefract}
                 onCleavage={cleavage}
+                tryLightTrack={tryLightTrack}
+                lightTrackResult={lightTrackResult}
+                refractResult={refractResult}
+                isRefracting={isRefracting}
+                onRecrystallize={handleRecrystallize}
+                modelConfig={modelConfig}
+                setModelConfig={setModelConfig}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'cluster' && (
+            <motion.div key="cluster" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ClusterWorkshop
+                runtimeState={runtimeState}
+                refractResult={refractResult}
+                isRefracting={isRefracting}
+                modelConfig={modelConfig}
+                setModelConfig={setModelConfig}
               />
             </motion.div>
           )}

@@ -4,6 +4,8 @@
  *
  * Where creators build new Krystal files from scratch.
  * Workflow: fill facets → choose Band Gap → upload sigil image → Crystallize → download .krys
+ *
+ * Supports Recrystallize: pre-fill form from existing .krys payload.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -20,6 +22,7 @@ import { BAND_GAP_LABELS } from '../hooks/useCrystalRuntime';
 interface ForgingPlatformProps {
   onCrystallize: (payload: KipPayload, sigilBlob?: Blob | null) => Promise<void>;
   isForging: boolean;
+  recrystallizePayload?: KipPayload | null;
 }
 
 function generateUUID(): string {
@@ -49,12 +52,17 @@ const DEFAULT_PAYLOAD: KipPayload = {
   fingerprint: { algorithm: 'SHA-256', hash: '', covers: ['visual_pixels', 'json_payload', 'band_gap_color'] },
 };
 
-export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize, isForging }) => {
-  const [payload, setPayload] = useState<KipPayload>({ ...DEFAULT_PAYLOAD, crystalId: generateUUID() });
+export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize, isForging, recrystallizePayload }) => {
+  const [payload, setPayload] = useState<KipPayload>(() =>
+    recrystallizePayload
+      ? { ...recrystallizePayload, crystalId: generateUUID() }
+      : { ...DEFAULT_PAYLOAD, crystalId: generateUUID() }
+  );
   const [sigilBlob, setSigilBlob] = useState<Blob | null>(null);
   const [sigilPreviewUrl, setSigilPreviewUrl] = useState<string | null>(null);
   const [previewCanvasEl, setPreviewCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const isRecrystallize = !!recrystallizePayload;
 
   // ── Live canvas preview ─────────────────────────────
   const updatePreview = useCallback(async () => {
@@ -122,8 +130,17 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
       {/* ── Left: Form ── */}
       <form className="forging-form-area" onSubmit={handleSubmit}>
         <div>
-          <h1 className="forge-title">铸造台 <span style={{ color: accentColor }}>Forging Platform</span></h1>
-          <p className="forge-subtitle">将你的 AI 能力结晶为可执行的 .krys 视觉文件</p>
+          <h1 className="forge-title">
+            {isRecrystallize ? '重结晶 ' : '铸造台 '}
+            <span style={{ color: accentColor }}>
+              {isRecrystallize ? 'Recrystallize' : 'Forging Platform'}
+            </span>
+          </h1>
+          <p className="forge-subtitle">
+            {isRecrystallize
+              ? '基于已有晶体进行版本迭代，更新切面参数后重新结晶'
+              : '将你的 AI 能力结晶为可执行的 .krys 视觉文件'}
+          </p>
         </div>
 
         {/* Identity */}
@@ -302,6 +319,36 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
           </div>
         </div>
 
+        {/* Inclusion Facet */}
+        <div className="facet-section">
+          <div className="facet-section-header">
+            <span className="facet-badge">[INCLUSION]</span>
+            <span className="facet-title">包裹体 External Dependencies</span>
+          </div>
+          <div className="facet-body">
+            <div className="kip-field">
+              <label className="kip-label">外部 API 端点 Endpoints (每行一个)</label>
+              <textarea
+                className="kip-textarea"
+                rows={3}
+                placeholder="https://api.example.com/v1/analyze&#10;https://knowledge.example.com/query"
+                value={payload.facets.inclusion.endpoints.join('\n')}
+                onChange={e => setField(['facets', 'inclusion', 'endpoints'], e.target.value.split('\n').filter(Boolean))}
+              />
+            </div>
+            <div className="kip-field">
+              <label className="kip-label">知识库引用 Knowledge Refs (每行一个)</label>
+              <textarea
+                className="kip-textarea"
+                rows={3}
+                placeholder="kb://crystal-design-patterns&#10;hash://sha256/abc123..."
+                value={payload.facets.inclusion.knowledgeRefs.join('\n')}
+                onChange={e => setField(['facets', 'inclusion', 'knowledgeRefs'], e.target.value.split('\n').filter(Boolean))}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Correction Facet */}
         <div className="facet-section">
           <div className="facet-section-header">
@@ -317,6 +364,16 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
                 placeholder="在无网络环境下的简化执行提示词..."
                 value={payload.facets.correction.fallbackPrompt}
                 onChange={e => setField(['facets', 'correction', 'fallbackPrompt'], e.target.value)}
+              />
+            </div>
+            <div className="kip-field">
+              <label className="kip-label">冗余纠错代码 Redundancy Code</label>
+              <textarea
+                className="kip-textarea"
+                rows={3}
+                placeholder="在暗轨数据损坏时的备用恢复逻辑..."
+                value={payload.facets.correction.redundancyCode}
+                onChange={e => setField(['facets', 'correction', 'redundancyCode'], e.target.value)}
               />
             </div>
           </div>

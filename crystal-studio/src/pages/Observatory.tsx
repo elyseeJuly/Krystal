@@ -4,12 +4,20 @@
  *
  * Load any .krys file, decode it, validate integrity,
  * then refract through a connected AI model.
+ *
+ * KIP Level 2 Full Conformance:
+ *   - Dark Track + Light Track OCR fallback
+ *   - Offline Tier 3 degradation
+ *   - AI model adapter (OpenAI / Gemini / Web-LLM / Custom)
+ *   - Recrystallize workflow
+ *
+ * Author: Emberois | SPEC-KIP-0.1
  */
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type KipPayload, BAND_GAP_COLORS, type BandGapLevel } from '../core';
-import { BAND_GAP_LABELS } from '../hooks/useCrystalRuntime';
+import { BAND_GAP_LABELS, type AIModelConfig, type AIModelProvider, type RefractResult, type LightTrackResult } from '../hooks/useCrystalRuntime';
 
 interface ObservatoryProps {
   runtimeState: {
@@ -20,8 +28,15 @@ interface ObservatoryProps {
     isOffline: boolean;
   };
   onLoad: (file: File) => Promise<void>;
-  onRefract: () => void;
+  onRefract: (userInput?: string) => Promise<void>;
   onCleavage: () => void;
+  tryLightTrack: (ocrText: string) => LightTrackResult | null;
+  lightTrackResult: LightTrackResult | null;
+  refractResult: RefractResult | null;
+  isRefracting: boolean;
+  onRecrystallize: (payload: KipPayload) => void;
+  modelConfig: AIModelConfig;
+  setModelConfig: (config: AIModelConfig) => void;
 }
 
 const STATE_COLORS: Record<string, string> = {
@@ -48,17 +63,32 @@ const STATE_LABELS: Record<string, string> = {
   CLEAVAGE:   '解理 CLEAVAGE',
 };
 
+const PROVIDER_LABELS: Record<AIModelProvider, string> = {
+  openai:  'OpenAI',
+  gemini:  'Gemini',
+  webllm:  'Web-LLM',
+  custom:  'Custom',
+};
+
 export const Observatory: React.FC<ObservatoryProps> = ({
   runtimeState,
   onLoad,
   onRefract,
   onCleavage,
+  tryLightTrack,
+  lightTrackResult,
+  refractResult,
+  isRefracting,
+  onRecrystallize,
+  modelConfig,
+  setModelConfig,
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [openFacets, setOpenFacets] = useState<Record<string, boolean>>({});
-  const [refractResult, setRefractResult] = useState<string>('');
-  const [isRefracting, setIsRefracting] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [userInput, setUserInput] = useState('');
+  const [ocrText, setOcrText] = useState('');
+  const [showModelConfig, setShowModelConfig] = useState(false);
 
   const { payload, state, isOffline } = runtimeState;
 
@@ -66,7 +96,8 @@ export const Observatory: React.FC<ObservatoryProps> = ({
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     const url = URL.createObjectURL(file);
     setImagePreviewUrl(url);
-    setRefractResult('');
+    setUserInput('');
+    setOcrText('');
     await onLoad(file);
   }, [onLoad, imagePreviewUrl]);
 
@@ -85,22 +116,14 @@ export const Observatory: React.FC<ObservatoryProps> = ({
   const toggleFacet = (key: string) =>
     setOpenFacets(p => ({ ...p, [key]: !p[key] }));
 
-  // Simulate refraction (actual model call would go here)
+  // ── Light Track OCR fallback ──────────────────
+  const handleOcrSubmit = () => {
+    tryLightTrack(ocrText);
+  };
+
+  // ── Refract with user input ───────────────────
   const handleRefract = async () => {
-    if (!payload) return;
-    onRefract();
-    setIsRefracting(true);
-    // Simulate AI response
-    await new Promise(r => setTimeout(r, 1800));
-    setRefractResult(
-      `[折射结果 — Refraction Output]\n\n` +
-      `晶体: ${payload.crystalName} v${payload.crystalVersion}\n` +
-      `作者: ${payload.author}\n` +
-      `系统提示词已注入模型。\n\n` +
-      `--- System Prompt Preview ---\n` +
-      `${payload.facets.logic.systemPrompt.slice(0, 300)}${payload.facets.logic.systemPrompt.length > 300 ? '…' : ''}`
-    );
-    setIsRefracting(false);
+    await onRefract(userInput || undefined);
   };
 
   const accentColor = payload ? BAND_GAP_COLORS[payload.bandGapLevel as BandGapLevel] : 'var(--kip-safe)';
@@ -154,13 +177,60 @@ export const Observatory: React.FC<ObservatoryProps> = ({
         <p>支持 .krys / .png · 自动识别 KIP 暗轨数据</p>
       </div>
 
+      {/* Light Track OCR fallback — shown when dark track fails */}
+      {state === 'DEFECT' && runtimeState.errorMessage?.includes('Light Track') && (
+        <motion.div
+          className="kip-panel"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ borderColor: 'var(--kip-caution)' }}
+        >
+          <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', marginBottom: 8, color: 'var(--kip-caution)' }}>
+            ◆ 明轨降级 Light Track Fallback
+          </h4>
+          <p style={{ fontFamily: 'var(--font-code)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+            暗轨数据不可读（可能已被压缩）。请将图片通过 OCR 提取文本后粘贴到下方，系统将尝试从文本锚点恢复晶体数据。
+          </p>
+          <div className="kip-field" style={{ marginBottom: 8 }}>
+            <label className="kip-label">OCR 提取文本</label>
+            <textarea
+              className="kip-textarea"
+              rows={5}
+              placeholder="粘贴从图片中 OCR 提取的文本…&#10;系统将搜索 [CROWN] [INPUT] [LOGIC] [OUTPUT] [INCLUSION] [CORRECTION] 锚点"
+              value={ocrText}
+              onChange={e => setOcrText(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={handleOcrSubmit} type="button" style={{ fontSize: '0.78rem' }}>
+            ▷ 解析明轨 Parse Light Track
+          </button>
+
+          {lightTrackResult && Object.keys(lightTrackResult).length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{ marginTop: 12, background: 'var(--bg-deep)', borderRadius: 'var(--r-sm)', padding: 12, fontFamily: 'var(--font-code)', fontSize: '0.75rem', color: 'var(--text-secondary)', maxHeight: 200, overflowY: 'auto' }}
+            >
+              <div style={{ color: 'var(--kip-safe)', marginBottom: 6 }}>明轨解析结果 (≥70% 核心逻辑恢复):</div>
+              {Object.entries(lightTrackResult).map(([key, val]) => {
+                const text = val ?? '';
+                return (
+                <div key={key} style={{ marginBottom: 4 }}>
+                  <span style={{ color: accentColor }}>[{key.toUpperCase()}]</span> {text.slice(0, 120)}{text.length > 120 ? '…' : ''}
+                </div>
+              )})}
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+
       {/* State strip */}
       <div className="state-strip">
         <span>Crystal Runtime</span>
         <span className="state-pill" style={{ borderColor: STATE_COLORS[state], color: STATE_COLORS[state] }}>
           {STATE_LABELS[state] ?? state}
         </span>
-        {(state === 'MOUNTING' || state === 'VALIDATING') && (
+        {(state === 'MOUNTING' || state === 'VALIDATING' || state === 'REFRACTING') && (
           <span className="anim-pulse" style={{ color: accentColor }}>⬡</span>
         )}
       </div>
@@ -241,6 +311,87 @@ export const Observatory: React.FC<ObservatoryProps> = ({
               </div>
             </div>
 
+            {/* AI Model Config */}
+            <div>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => setShowModelConfig(!showModelConfig)}
+                style={{ fontSize: '0.72rem', padding: '6px 14px' }}
+              >
+                {showModelConfig ? '▲' : '▼'} AI 模型配置 Model Config
+              </button>
+              <AnimatePresence>
+                {showModelConfig && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div className="kip-field">
+                          <label className="kip-label">Provider</label>
+                          <select
+                            className="kip-select"
+                            value={modelConfig.provider}
+                            onChange={e => setModelConfig({ ...modelConfig, provider: e.target.value as AIModelProvider })}
+                          >
+                            {(['openai', 'gemini', 'webllm', 'custom'] as AIModelProvider[]).map(p => (
+                              <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="kip-field">
+                          <label className="kip-label">Model Name</label>
+                          <input
+                            className="kip-input"
+                            placeholder="gpt-4o / gemini-2.0-flash"
+                            value={modelConfig.modelName ?? ''}
+                            onChange={e => setModelConfig({ ...modelConfig, modelName: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      {(modelConfig.provider === 'openai' || modelConfig.provider === 'gemini') && (
+                        <div className="kip-field">
+                          <label className="kip-label">API Key</label>
+                          <input
+                            className="kip-input"
+                            type="password"
+                            placeholder="sk-..."
+                            value={modelConfig.apiKey ?? ''}
+                            onChange={e => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
+                          />
+                        </div>
+                      )}
+                      <div className="kip-field">
+                        <label className="kip-label">Base URL (optional)</label>
+                        <input
+                          className="kip-input"
+                          placeholder="https://api.openai.com/v1"
+                          value={modelConfig.baseUrl ?? ''}
+                          onChange={e => setModelConfig({ ...modelConfig, baseUrl: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* User input for refraction */}
+            <div className="kip-field">
+              <label className="kip-label">折射输入 Refraction Input</label>
+              <textarea
+                className="kip-textarea"
+                rows={3}
+                placeholder="输入要传递给晶体的数据…"
+                value={userInput}
+                onChange={e => setUserInput(e.target.value)}
+              />
+            </div>
+
             {/* Refract actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="refract-area">
@@ -254,20 +405,35 @@ export const Observatory: React.FC<ObservatoryProps> = ({
                     ? <><span className="anim-spin">⟳</span> 折射中 Refracting…</>
                     : '▷ 折射 Refract — 执行晶体'}
                 </button>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => onRecrystallize(payload!)}
+                  style={{ fontSize: '0.78rem' }}
+                >
+                  ⟳ 重结晶 Recrystallize
+                </button>
                 <button className="btn btn-ghost" onClick={onCleavage} type="button">
                   ✕ 解理 Cleavage
                 </button>
               </div>
 
-              {refractResult && (
-                <motion.div
-                  className="refract-result"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  {refractResult}
-                </motion.div>
-              )}
+              {/* Refract result */}
+              <AnimatePresence>
+                {refractResult && (
+                  <motion.div
+                    className="refract-result"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>模型: {refractResult.model}</span>
+                      <span>{new Date(refractResult.timestamp).toLocaleString()}</span>
+                    </div>
+                    {refractResult.output}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
