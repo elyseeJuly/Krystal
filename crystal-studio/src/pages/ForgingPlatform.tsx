@@ -68,12 +68,12 @@ const FORMAT_KEYWORDS: Array<{ pattern: RegExp; format: string }> = [
   { pattern: /\bpython\b|\bpy\b/i,     format: 'Python Code' },
   { pattern: /\bjavascript\b|\bjs\b/i, format: 'JavaScript/TypeScript Code' },
   { pattern: /\bapi\b|\brest\b|\bgraphql\b/i, format: 'API Response' },
-  { pattern: /\bprompt\b|\b指令\b|你是一个|你是一名|你是一位/i, format: 'Plaintext — Instruction' },
+  { pattern: /\bprompt\b|指令|你是一个|你是一名|你是一位/i, format: 'Plaintext — Instruction' },
 ];
 
 const TIER_KEYWORDS: Array<{ pattern: RegExp; tier: CrystalTier }> = [
-  { pattern: /\bapi[\s-]?key\b|https?:\/\/|api\.|网络|online|联网/i, tier: 3 },
-  { pattern: /\b文件系统|fs\.|本地|local\b|离线|offline/i,           tier: 2 },
+  { pattern: /\bapi[\s_-]?key(?=[\s_=:]|$)|https?:\/\/|api\.|网络|online|联网/i, tier: 3 },
+  { pattern: /文件系统|fs\.|本地|local|离线|offline/i,                               tier: 2 },
 ];
 
 const WAKE_WORD_PREFIXES = [
@@ -95,10 +95,10 @@ function detectTier(text: string): CrystalTier {
 }
 
 function detectBandGap(text: string): BandGapLevel {
-  if (/\b高危|危险|删除|destroy|delete|rm\s+-rf|高危权限/i.test(text)) return 'restricted';
-  if (/\bapi[\s-]?key|密码|password|token|secret|https?:\/\/|外部|external\b/i.test(text)) return 'caution';
-  if (/\b图片|图像|image|audio|视频|video|multimodal|多模态/i.test(text)) return 'multimodal';
-  if (/\btool|工具|函数|function|command/i.test(text)) return 'tool';
+  if (/高危|危险|删除|destroy|delete|rm\s+-rf|高危权限/i.test(text)) return 'restricted';
+  if (/\bapi[\s_-]?key(?=[\s_=:]|$)|密码|password|token|secret|https?:\/\/|外部|external/i.test(text)) return 'caution';
+  if (/图片|图像|image|audio|视频|video|multimodal|多模态/i.test(text)) return 'multimodal';
+  if (/(?:^|[\s_])tool(?=[\s_]|$)|工具|函数|function|command/i.test(text)) return 'tool';
   return 'safe';
 }
 
@@ -469,7 +469,7 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
             ADVANCED FORM (collapsible, auto-filled)
             ════════════════════════════════════════════════ */}
         <AnimatePresence>
-          {(showAdvanced || !quickMode) && (
+          {(showAdvanced) && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
