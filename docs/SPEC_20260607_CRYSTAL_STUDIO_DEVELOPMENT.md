@@ -66,7 +66,10 @@
 ### 2.2 数据流
 
 ```
-用户输入 → ForgingPlatform (表单)
+用户输入 → ForgingPlatform (表单 / 快速导入)
+              │
+              ├── 快速导入: 粘贴文本/上传文档 → parseTextToPayload()
+              │             自动填充 6 个切面 + Band Gap + Tier
               │
               ▼
          SigilForge (Canvas 渲染)
@@ -184,7 +187,7 @@ crystal-studio/
 
 | 页面 | 状态 | 说明 |
 | :--- | :--- | :--- |
-| 铸造台 Forge | ✅ 完成 | 6 Facet 全表单 + Band Gap 选择 + 实时预览 + 下载 |
+| 铸造台 Forge | ✅ 完成 | 快速导入 (粘贴文本/上传文档 → 自动解析填充) + 6 Facet 全表单 + Band Gap 选择 + 实时预览 + 下载 |
 | 观测站 Observatory | ✅ 完成 | 拖放加载 + 校验 + 色散展示 + 折射 + 明轨降级 |
 | 晶簇工坊 Cluster | ✅ 完成 | 多文件拖放 + 交互式连线 + 拓扑排序执行 + 结果展示 |
 
