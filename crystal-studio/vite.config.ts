@@ -1,10 +1,12 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  // GH Pages serves at /Krystal/; local dev at /
+  base: mode === 'production' ? '/Krystal/' : '/',
   server: {
     port: 5773,
     strictPort: true,
@@ -14,4 +16,4 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
-})
+}))

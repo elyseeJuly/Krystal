@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Krystal — Redirecting</title>
+  <style>
+    body {
+      background: #080810;
+      color: #8888aa;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .gem { font-size: 48px; }
+    a { color: #2979FF; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="gem">💎</div>
+  <p>页面未找到 — 正在跳转到 Crystal Studio...</p>
+  <p><a href="/Krystal/">→ 立即跳转</a></p>
+
+  <script>
+    // SPA fallback: preserve the current path after redirecting to index.html
+    (function () {
+      var segment = '/Krystal';
+      var path = location.pathname;
+      // If we're already on the app path, just go to index
+      if (path.indexOf(segment) !== -1) {
+        var hash = path.replace(segment, '') + location.search;
+        // Wait a beat then redirect
+        setTimeout(function () {
+          window.location.href = segment + '/?redirect=' + encodeURIComponent(hash);
+        }, 2000);
+      } else {
+        window.location.href = segment + '/';
+      }
+    })();
+  </script>
+</body>
+</html>
