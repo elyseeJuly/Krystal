@@ -14,7 +14,7 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { KipPayload } from '../core';
 import { BAND_GAP_COLORS, type BandGapLevel } from '../core';
-import { BAND_GAP_LABELS, type AIModelConfig, type AIModelProvider, type RefractResult } from '../hooks/useCrystalRuntime';
+import { type AIModelConfig, type AIModelProvider, type RefractResult } from '../hooks/useCrystalRuntime';
 
 // ─────────────────────────────────────────────
 // Types
@@ -199,13 +199,6 @@ export const ClusterWorkshop: React.FC<ClusterWorkshopProps> = ({
   }, []);
 
   // ── Cluster execution ──────────────────
-  const getAssembly = useCallback((): ClusterAssembly => ({
-    id: crypto.randomUUID(),
-    name: clusterName || 'Unnamed Cluster',
-    nodes,
-    edges,
-    createdAt: new Date().toISOString(),
-  }), [clusterName, nodes, edges]);
 
   // ── Validate cluster config ─────────────
   const validateCluster = useCallback((): string | null => {
@@ -214,7 +207,6 @@ export const ClusterWorkshop: React.FC<ClusterWorkshopProps> = ({
     if (edges.length === 0) return '请至少添加一条连线，定义晶体间的数据流向';
     // Check all nodes are reachable
     const reachable = new Set<string>();
-    const fromNodes = new Set(edges.map(e => e.from));
     edges.forEach(e => { reachable.add(e.from); reachable.add(e.to); });
     if (reachable.size < nodes.length) {
       return '存在未连接的孤立晶体节点，请确保所有节点都有连线';

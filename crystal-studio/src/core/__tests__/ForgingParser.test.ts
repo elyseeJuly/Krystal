@@ -12,14 +12,6 @@ import { describe, it, expect } from 'vitest';
 
 // ── Replicate parser functions (same logic as in ForgingPlatform.tsx) ──
 
-const BAND_GAP_COLORS: Record<string, string> = {
-  safe: '#0BDA51',
-  caution: '#FFBF00',
-  restricted: '#E30022',
-  tool: '#2979FF',
-  multimodal: '#B388FF',
-};
-
 function detectBandGap(text: string): string {
   if (/高危|危险|删除|destroy|delete|rm\s+-rf|高危权限/i.test(text)) return 'restricted';
   if (/\bapi[\s_-]?key(?=[\s_=:]|$)|密码|password|token|secret|https?:\/\/|外部|external/i.test(text)) return 'caution';

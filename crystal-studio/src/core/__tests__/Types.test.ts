@@ -23,9 +23,9 @@ describe('BAND_GAP_COLORS', () => {
     multimodal: '#B388FF',
   };
 
-  for (const [level, expectedHex] of Object.entries(expected)) {
-    it(`${level} should be ${expectedHex}`, () => {
-      expect(BAND_GAP_COLORS[level]).toBe(expectedHex);
+  for (const level of (Object.keys(expected) as Array<keyof typeof BAND_GAP_COLORS>)) {
+    it(`${level} should be ${expected[level]}`, () => {
+      expect(BAND_GAP_COLORS[level]).toBe(expected[level]);
     });
   }
 

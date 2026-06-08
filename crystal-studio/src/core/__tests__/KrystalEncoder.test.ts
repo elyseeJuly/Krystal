@@ -67,7 +67,6 @@ function createMinimalPNG(): Blob {
   idat.set(idatCrcBytes, 8 + idatData.length);
 
   // IEND
-  const iendData = new Uint8Array(0);
   const iendLen = new Uint8Array([0, 0, 0, 0]);
   const iendType = new Uint8Array([73, 69, 78, 68]); // 'IEND'
   const iendCrc = new Uint8Array([0xae, 0x42, 0x60, 0x82]); // correct IEND CRC
@@ -144,15 +143,9 @@ describe('KrystalEncoder', () => {
       const buf = await result.arrayBuffer();
       const bytes = new Uint8Array(buf);
 
-      // Search for 'KIP' in tEXt chunk
-      const kipBytes = new Uint8Array([75, 73, 80]); // 'KIP'
-      let foundKip = false;
-      for (let i = 0; i <= bytes.length - 3; i++) {
-        if (bytes[i] === 75 && bytes[i + 1] === 73 && bytes[i + 2] === 80) {
-          foundKip = true;
-          break;
-        }
-      }
+      // Search for 'KIP' in tEXt chunk — use string search via TextDecoder
+      const decoded = new TextDecoder().decode(bytes);
+      const foundKip = decoded.includes('KIP');
       expect(foundKip).toBe(true);
     });
   });
