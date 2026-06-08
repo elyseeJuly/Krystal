@@ -71,8 +71,8 @@ export class KrystalEncoder {
    * Injects a KipPayload into an existing PNG image as a 'kiPl' private chunk.
    * Returns the modified PNG as a Blob.
    *
-   * Insertion point: immediately after the IHDR chunk, before IDAT.
-   * This ensures the payload survives even partial reads.
+   * Insertion point: immediately before the IDAT chunk (searched by chunk type).
+   * This is more robust than assuming the IHDR chunk position (8+25).
    */
   async encode(imageFile: File | Blob, payload: KipPayload): Promise<Blob> {
     const buffer = new Uint8Array(await imageFile.arrayBuffer());
@@ -88,14 +88,38 @@ export class KrystalEncoder {
     const tEXtData = new Uint8Array([...keyword, ...nullByte, ...payloadBytes]);
     const textChunk = buildChunk('tEXt', tEXtData);
 
-    // Find insertion point: after PNG signature (8 bytes) + IHDR chunk (25 bytes)
-    // IHDR is always the first chunk: 4(len) + 4(type) + 13(data) + 4(crc) = 25 bytes
-    const insertionPoint = 8 + 25;
+    // Search for the IDAT chunk (first occurrence), which is where we inject
+    const idatType = new TextEncoder().encode('IDAT');
+    let idatIndex = -1;
+    for (let i = 8; i < buffer.length - 4; i++) {
+      if (buffer[i] === idatType[0] && buffer[i + 1] === idatType[1] &&
+          buffer[i + 2] === idatType[2] && buffer[i + 3] === idatType[3]) {
+        idatIndex = i;
+        break;
+      }
+    }
 
+    // If no IDAT found, fall back to inserting before IEND
+    if (idatIndex === -1) {
+      const iendType = new TextEncoder().encode('IEND');
+      for (let i = 8; i < buffer.length - 4; i++) {
+        if (buffer[i] === iendType[0] && buffer[i + 1] === iendType[1] &&
+            buffer[i + 2] === iendType[2] && buffer[i + 3] === iendType[3]) {
+          idatIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Last resort: after IHDR (8 + 4 + 4 + 13 + 4 = 33)
+    if (idatIndex === -1) idatIndex = 8 + 25;
+
+    // IDAT chunk position: the 4 bytes before the type are the length
+    const insertionPoint = idatIndex - 4;
     const before = buffer.slice(0, insertionPoint);
     const after = buffer.slice(insertionPoint);
 
-    // Rebuild the PNG: signature + IHDR + kiPl + tEXt + rest
+    // Rebuild the PNG: before + kiPl + tEXt + after (starting at IDAT)
     const extended = new Uint8Array(
       before.length + kipChunk.length + textChunk.length + after.length
     );

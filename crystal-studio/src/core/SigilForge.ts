@@ -184,31 +184,73 @@ async function drawCore(
 
     ctx.drawImage(sigilImage, sx, sy, sw, sh, CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
   } else {
-    // Fallback: dark gradient with crystal shimmer
+    // ── Default gemstone crystal ──
+    // Per SPEC-KIP-0.1 §3.1: "a visually compelling gemstone"
     const accent = accentColor ?? '#0BDA51';
-    const grad = ctx.createRadialGradient(
-      CANVAS_SIZE / 2, CANVAS_SIZE / 2, 0,
-      CANVAS_SIZE / 2, CANVAS_SIZE / 2, CORE_SIZE / 2,
-    );
-    grad.addColorStop(0,   '#1a1a2e');
+    const cx = CANVAS_SIZE / 2;
+    const cy = CANVAS_SIZE / 2;
+    const r = CORE_SIZE / 2;
+    const facets = 8; // 8-fold symmetry
+
+    // Background: deep crystalline gradient
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0,   '#2a2a4a');
+    grad.addColorStop(0.3, '#1a1a36');
     grad.addColorStop(0.6, '#0d0d1a');
-    grad.addColorStop(1,   `${accent}33`);
+    grad.addColorStop(1,   '#06060e');
     ctx.fillStyle = grad;
     ctx.fillRect(CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
 
-    // Crystal shimmer lines
-    ctx.strokeStyle = `${accent}44`;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI;
-      const cx = CANVAS_SIZE / 2;
-      const cy = CANVAS_SIZE / 2;
-      const r = CORE_SIZE / 2;
+    // Faceted gemstone faces (8 triangular wedges)
+    for (let i = 0; i < facets; i++) {
+      const angleA = (i / facets) * Math.PI * 2;
+      const angleB = ((i + 0.5) / facets) * Math.PI * 2;
+      const angleC = ((i + 1) / facets) * Math.PI * 2;
+
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
-      ctx.lineTo(cx - Math.cos(angle) * r, cy - Math.sin(angle) * r);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angleA) * r, cy + Math.sin(angleA) * r);
+      ctx.lineTo(cx + Math.cos(angleB) * r * 0.95, cy + Math.sin(angleB) * r * 0.95);
+      ctx.closePath();
+
+      // Alternate lighting intensity per facet
+      const brightness = 0.3 + (i % 2) * 0.25;
+      ctx.fillStyle = `${accent}${Math.floor(brightness * 40).toString(16).padStart(2, '0')}`;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angleB) * r * 0.95, cy + Math.sin(angleB) * r * 0.95);
+      ctx.lineTo(cx + Math.cos(angleC) * r, cy + Math.sin(angleC) * r);
+      ctx.closePath();
+
+      const brightness2 = 0.2 + ((i + 1) % 2) * 0.15;
+      ctx.fillStyle = `${accent}${Math.floor(brightness2 * 30).toString(16).padStart(2, '0')}`;
+      ctx.fill();
+    }
+
+    // Shimmer highlight (cross-shaped light reflection)
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI + Math.PI / 8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * r * 0.7, cy + Math.sin(angle) * r * 0.7);
       ctx.stroke();
     }
+
+    // Outer edge glow
+    ctx.strokeStyle = `${accent}44`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(CORE_OFFSET + 1, CORE_OFFSET + 1, CORE_SIZE - 2, CORE_SIZE - 2);
+
+    // Inner accent pulsing ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
+    ctx.strokeStyle = `${accent}22`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   ctx.restore();

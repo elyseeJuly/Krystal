@@ -190,6 +190,19 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
   const [importSuccess, setImportSuccess] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Export feedback
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const wasForgingRef = useRef(false);
+  useEffect(() => {
+    if (wasForgingRef.current && !isForging && importSuccess) {
+      // Crystallize just completed successfully
+      setExportSuccess(true);
+      const t = setTimeout(() => setExportSuccess(false), 5000);
+      return () => clearTimeout(t);
+    }
+    wasForgingRef.current = isForging;
+  }, [isForging, importSuccess]);
+
   // ── Live canvas preview ─────────────────────────────
   const updatePreview = useCallback(async () => {
     const forge = new SigilForge();
@@ -710,6 +723,33 @@ export const ForgingPlatform: React.FC<ForgingPlatformProps> = ({ onCrystallize,
                     />
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Export success banner ── */}
+        <AnimatePresence>
+          {exportSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="kip-panel"
+              style={{
+                borderColor: 'var(--kip-safe)',
+                background: 'rgba(11,218,81,0.08)',
+                marginBottom: 12,
+                padding: '12px 16px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>✅</div>
+              <div style={{ fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '0.85rem' }}>
+                Krystal 已导出 — {payload.crystalName}_v{payload.crystalVersion}.krys
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                .krys 文件已下载到本地，可在观测站中加载查看
               </div>
             </motion.div>
           )}
