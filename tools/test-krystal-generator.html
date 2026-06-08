@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Krystal Test Generator</title>
+<style>
+  body { background: #080810; color: #ccc; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+  h1 { color: #0BDA51; font-family: 'Share Tech Mono', monospace; }
+  .container { max-width: 1100px; width: 100%; }
+  .panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .panel h3 { color: #2979FF; font-family: monospace; margin: 0 0 8px; font-size: 13px; }
+  textarea { width: 100%; background: #0a0a18; border: 1px solid #333; color: #ccc; font-family: monospace; padding: 8px; border-radius: 4px; box-sizing: border-box; }
+  button { background: #0BDA51; color: #000; border: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+  button:hover { background: #0cE861; }
+  button.secondary { background: #2979FF; color: #fff; margin-left: 8px; }
+  button.secondary:hover { background: #3A8AFF; }
+  img { max-width: 100%; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); }
+  .flex { display: flex; gap: 16px; flex-wrap: wrap; }
+  .preview-box { flex: 1; min-width: 300px; }
+  .info-box { flex: 1; min-width: 300px; }
+  .status { color: #0BDA51; font-family: monospace; font-size: 12px; margin-top: 8px; }
+  .log { background: #050510; border: 1px solid #222; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto; }
+  .log div { padding: 2px 0; }
+  .band-gap-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="container">
+  <h1>💎 Krystal Test Generator</h1>
+  <p style="color: #888; font-size: 13px;">Generate a real .krys file — visually inspect the image, then verify any multimodal AI can read it.</p>
+
+  <div class="panel">
+    <h3>▶ Test Payload</h3>
+    <textarea id="promptInput" rows="6" style="font-size: 12px;">你是一个专业的 TypeScript 代码审查助手。你的职责是：
+1. 检查类型安全性（any 类型、泛型约束）
+2. 检查边界条件（null/undefined 处理、空数组）
+3. 检查异步错误处理（try-catch、Promise.reject）
+4. 输出格式为 Markdown 报告，包含严重等级标签</textarea>
+  </div>
+
+  <div class="flex">
+    <div class="preview-box panel">
+      <h3>▶ Generated Krystal Image</h3>
+      <div id="previewArea" style="text-align:center; padding: 12px; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+        <span style="color: #555; font-size: 13px;">点击下方按钮生成预览</span>
+      </div>
+    </div>
+
+    <div class="info-box panel">
+      <h3>▶ Parsed Crystal Info</h3>
+      <div id="infoArea" style="font-family: monospace; font-size: 12px; color: #aaa;">
+        <div>— 待生成 —</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap;">
+    <button id="generateBtn">⚡ 生成 Krystal 并下载</button>
+    <button id="previewOnlyBtn" class="secondary">👁 仅预览图像</button>
+  </div>
+
+  <div class="panel">
+    <h3>▶ 生成日志</h3>
+    <div class="log" id="logArea"><div style="color:#555;">就绪</div></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 1. Type Constants (inlined from types.ts)
+// ═══════════════════════════════════════════
+
+const BAND_GAP_COLORS = {
+  safe: '#0BDA51', caution: '#FFBF00', restricted: '#E30022',
+  tool: '#2979FF', multimodal: '#B388FF',
+};
+const QUADRANT_LOCK_COLOR = '#FF00FF';
+const CANVAS_SIZE = 1024;
+const CORE_RATIO = Math.sqrt(0.40);
+const CORE_SIZE = Math.floor(CANVAS_SIZE * CORE_RATIO);
+const CORE_OFFSET = Math.floor((CANVAS_SIZE - CORE_SIZE) / 2);
+
+// ═══════════════════════════════════════════
+// 2. CRC-32 (for PNG chunk building)
+// ═══════════════════════════════════════════
+
+function crc32(data) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i];
+    for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// ═══════════════════════════════════════════
+// 3. KrystalEncoder (inlined)
+// ═══════════════════════════════════════════
+
+function buildChunk(type, data) {
+  const encoder = new TextEncoder();
+  const typeBytes = encoder.encode(type);
+  const len = new Uint8Array([(data.length >>> 24) & 0xFF, (data.length >>> 16) & 0xFF, (data.length >>> 8) & 0xFF, data.length & 0xFF]);
+  const crcInput = new Uint8Array(typeBytes.length + data.length);
+  crcInput.set(typeBytes, 0);
+  crcInput.set(data, typeBytes.length);
+  const crcVal = crc32(crcInput);
+  const crcBytes = new Uint8Array([(crcVal >>> 24) & 0xFF, (crcVal >>> 16) & 0xFF, (crcVal >>> 8) & 0xFF, crcVal & 0xFF]);
+  const chunk = new Uint8Array(len.length + typeBytes.length + data.length + crcBytes.length);
+  chunk.set(len, 0);
+  chunk.set(typeBytes, len.length);
+  chunk.set(data, len.length + typeBytes.length);
+  chunk.set(crcBytes, len.length + typeBytes.length + data.length);
+  return chunk;
+}
+
+async function encodeKrys(pngBlob, payload) {
+  const buffer = new Uint8Array(await pngBlob.arrayBuffer());
+  const json = JSON.stringify(payload);
+  const payloadBytes = new TextEncoder().encode(json);
+
+  const kipChunk = buildChunk('kiPl', payloadBytes);
+  const keyword = new TextEncoder().encode('KIP');
+  const nullByte = new Uint8Array([0]);
+  const tEXtData = new Uint8Array([...keyword, ...nullByte, ...payloadBytes]);
+  const textChunk = buildChunk('tEXt', tEXtData);
+
+  // Search for IDAT chunk
+  const idatType = new TextEncoder().encode('IDAT');
+  let idatIndex = -1;
+  for (let i = 8; i < buffer.length - 4; i++) {
+    if (buffer[i] === idatType[0] && buffer[i+1] === idatType[1] && buffer[i+2] === idatType[2] && buffer[i+3] === idatType[3]) {
+      idatIndex = i; break;
+    }
+  }
+  if (idatIndex === -1) {
+    const iendType = new TextEncoder().encode('IEND');
+    for (let i = 8; i < buffer.length - 4; i++) {
+      if (buffer[i] === iendType[0] && buffer[i+1] === iendType[1] && buffer[i+2] === iendType[2] && buffer[i+3] === iendType[3]) {
+        idatIndex = i; break;
+      }
+    }
+  }
+  const insertionPoint = (idatIndex >= 0 ? idatIndex : 8 + 25) - 4;
+  const before = buffer.slice(0, insertionPoint);
+  const after = buffer.slice(insertionPoint);
+
+  const extended = new Uint8Array(before.length + kipChunk.length + textChunk.length + after.length);
+  let offset = 0;
+  extended.set(before, offset); offset += before.length;
+  extended.set(kipChunk, offset); offset += kipChunk.length;
+  extended.set(textChunk, offset); offset += textChunk.length;
+  extended.set(after, offset);
+
+  return new Blob([extended], { type: 'image/png' });
+}
+
+// ═══════════════════════════════════════════
+// 4. SHA-256 (via async SubtleCrypto)
+// ═══════════════════════════════════════════
+
+async function computeSHA256(buffer) {
+  const hash = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════
+// 5. SigilForge Rendering (canvas)
+// ═══════════════════════════════════════════
+
+async function renderKrystal(canvas, payload, sigilBlob) {
+  const ctx = canvas.getContext('2d');
+  const accentColor = BAND_GAP_COLORS[payload.bandGapLevel] || '#0BDA51';
+  const S = CANVAS_SIZE, CO = CORE_OFFSET, CS = CORE_SIZE;
+
+  // Background
+  const bgGrad = ctx.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2);
+  bgGrad.addColorStop(0, '#15152a');
+  bgGrad.addColorStop(0.6, '#0d0d1c');
+  bgGrad.addColorStop(1, '#06060e');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, S, S);
+
+  // Top Crown — centered header
+  const TOP_H = CO;
+  ctx.save();
+  ctx.fillStyle = `${accentColor}22`;
+  ctx.fillRect(CO, 0, CS, TOP_H);
+  ctx.font = 'bold 16px "Share Tech Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = accentColor;
+  ctx.shadowColor = accentColor;
+  ctx.shadowBlur = 12;
+  ctx.fillText(payload.crystalName, S/2, TOP_H/2 + 4);
+  ctx.shadowBlur = 0;
+  ctx.font = '11px "Share Tech Mono", monospace';
+  ctx.fillStyle = `${accentColor}AA`;
+  ctx.fillText(`v${payload.crystalVersion} · ${payload.facets.crown.wakeWord || '—'} · Tier ${payload.crystalTier}`, S/2, TOP_H/2 + 22);
+  ctx.textAlign = 'left';
+  ctx.restore();
+
+  // Facet panels
+  const SIDE_H = CS / 2;
+  const BOT_H = CO;
+
+  drawFacetPanel(ctx, 0, 0, CO, SIDE_H, '[CORRECTION]', payload.facets.correction.fallbackPrompt.slice(0, 200), accentColor);
+  drawFacetPanel(ctx, CO+CS, 0, S-CO-CS, SIDE_H, '[INPUT]', payload.facets.input.format + (payload.facets.input.description ? ': ' + payload.facets.input.description : ''), accentColor);
+  drawFacetPanel(ctx, 0, SIDE_H, CO, SIDE_H, '[INCLUSION]', (payload.facets.inclusion.endpoints.length > 0 ? payload.facets.inclusion.endpoints.join('\n') : '—'), accentColor);
+  drawFacetPanel(ctx, CO+CS, SIDE_H, S-CO-CS, SIDE_H, '[LOGIC]', payload.facets.logic.systemPrompt.slice(0, 400), accentColor);
+  drawFacetPanel(ctx, CO, CO+CS, CS, BOT_H, '[OUTPUT]', `Format: ${payload.facets.output.format}${payload.facets.output.toneTemplate ? ' | ' + payload.facets.output.toneTemplate : ''}`, accentColor);
+
+  // Quadrant anchors
+  drawQuadrantAnchors(ctx);
+
+  // Core gemstone
+  await drawCore(ctx, sigBlob, accentColor);
+
+  // Band Gap
+  drawBandGap(ctx, accentColor, payload.bandGapLevel);
+
+  // Footer
+  ctx.save();
+  ctx.font = '9px "Share Tech Mono", monospace';
+  ctx.fillStyle = `${accentColor}66`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`KIP v${payload.kipVersion} · ${payload.bandGapLevel.toUpperCase()} · SHA-256 ${(payload.fingerprint.hash || '').slice(0,16)}…`, S/2, S-6);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function drawFacetPanel(ctx, x, y, w, h, label, content, accentColor) {
+  ctx.save();
+  const grad = ctx.createLinearGradient(x, y, x, y+h);
+  grad.addColorStop(0, 'rgba(10,10,24,0.95)');
+  grad.addColorStop(0.5, 'rgba(16,12,28,0.92)');
+  grad.addColorStop(1, 'rgba(8,8,18,0.95)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = `${accentColor}33`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.font = 'bold 13px "Share Tech Mono", monospace';
+  ctx.fillStyle = accentColor;
+  ctx.shadowColor = accentColor;
+  ctx.shadowBlur = 8;
+  ctx.fillText(label, x+6, y+16);
+  ctx.shadowBlur = 0;
+
+  ctx.strokeStyle = `${accentColor}15`;
+  ctx.lineWidth = 1;
+  for (let i=0; i<h; i+=6) { ctx.beginPath(); ctx.moveTo(x, y+i); ctx.lineTo(x+w, y+i); ctx.stroke(); }
+
+  if (w-12 > 20 && h-32 > 12) {
+    ctx.font = '11px "Share Tech Mono", monospace';
+    ctx.fillStyle = `${accentColor}CC`;
+    ctx.beginPath();
+    ctx.rect(x+6, y+16, w-12, h-32);
+    ctx.clip();
+    const words = content.split(' ');
+    let line = '', ly = y+28;
+    for (const word of words) {
+      const test = line + (line ? ' ' : '') + word;
+      if (ctx.measureText(test).width > w-12 && line) {
+        if (ly+13 > y+h-4) { ctx.fillText((line.slice(0,-1)+'…')||'…', x+6, ly); break; }
+        ctx.fillText(line, x+6, ly);
+        line = word; ly += 13;
+      } else { line = test; }
+    }
+    if (line && ly <= y+h-4) ctx.fillText(line, x+6, ly);
+  }
+  ctx.restore();
+}
+
+function drawQuadrantAnchors(ctx) {
+  ctx.fillStyle = QUADRANT_LOCK_COLOR;
+  const A=2, positions = [
+    {x:0,y:0},{x:CANVAS_SIZE-A,y:0},{x:0,y:CANVAS_SIZE-A},{x:CANVAS_SIZE-A,y:CANVAS_SIZE-A},
+    {x:CORE_OFFSET,y:CORE_OFFSET},{x:CORE_OFFSET+CORE_SIZE,y:CORE_OFFSET},
+    {x:CORE_OFFSET,y:CORE_OFFSET+CORE_SIZE},{x:CORE_OFFSET+CORE_SIZE,y:CORE_OFFSET+CORE_SIZE}
+  ];
+  positions.forEach(p => ctx.fillRect(p.x, p.y, A, A));
+}
+
+function drawBandGap(ctx, color, label) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 20;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(CORE_OFFSET-1, CORE_OFFSET-1, CORE_SIZE+2, CORE_SIZE+2);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = `${color}88`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(CORE_OFFSET-2, CORE_OFFSET-2, CORE_SIZE+4, CORE_SIZE+4);
+  ctx.font = 'bold 13px "Share Tech Mono", monospace';
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  ctx.textAlign = 'right';
+  ctx.fillText(label.toUpperCase(), CORE_OFFSET+CORE_SIZE-4, CORE_OFFSET-10);
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+let sigBlob = null;
+
+async function drawCore(ctx, sigilBlobParam, accentColor) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
+  ctx.clip();
+
+  if (sigilBlobParam) {
+    const img = await loadImage(sigilBlobParam);
+    const sr = img.naturalWidth / img.naturalHeight;
+    let sw = img.naturalWidth, sh = img.naturalHeight, sx=0, sy=0;
+    if (sr>1) { sw=sh; sx=(img.naturalWidth-sw)/2; } else { sh=sw; sy=(img.naturalHeight-sh)/2; }
+    ctx.drawImage(img, sx, sy, sw, sh, CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
+  } else {
+    const accent = accentColor || '#0BDA51';
+    const cx=CANVAS_SIZE/2, cy=CANVAS_SIZE/2, r=CORE_SIZE/2, facets=8;
+    const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    bgGrad.addColorStop(0,'#1a1a3a'); bgGrad.addColorStop(0.3,'#12122a');
+    bgGrad.addColorStop(0.7,'#0a0a1a'); bgGrad.addColorStop(1,'#050510');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
+
+    for (let i=0; i<facets; i++) {
+      const a0=(i/facets)*Math.PI*2, a1=((i+0.5)/facets)*Math.PI*2, a2=((i+1)/facets)*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a0)*r, cy+Math.sin(a0)*r);
+      ctx.lineTo(cx+Math.cos(a1)*r*0.9, cy+Math.sin(a1)*r*0.9);
+      ctx.closePath();
+      const b1=0.35+(i%2)*0.35;
+      ctx.fillStyle = `${accent}${Math.floor(b1*55).toString(16).padStart(2,'0')}`;
+      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a1)*r*0.9, cy+Math.sin(a1)*r*0.9);
+      ctx.lineTo(cx+Math.cos(a2)*r, cy+Math.sin(a2)*r);
+      ctx.closePath();
+      const b2=0.25+((i+1)%2)*0.25;
+      ctx.fillStyle = `${accent}${Math.floor(b2*50).toString(16).padStart(2,'0')}`;
+      ctx.fill();
+    }
+
+    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=2;
+    for (let i=0; i<4; i++) {
+      const a=(i/4)*Math.PI+Math.PI/8;
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a)*r*0.6, cy+Math.sin(a)*r*0.6);
+      ctx.stroke();
+    }
+
+    const spotGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,r*0.3);
+    spotGrad.addColorStop(0,'rgba(255,255,255,0.08)');
+    spotGrad.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=spotGrad; ctx.beginPath(); ctx.arc(cx,cy,r*0.3,0,Math.PI*2); ctx.fill();
+
+    ctx.strokeStyle=`${accent}55`; ctx.lineWidth=1.5;
+    ctx.strokeRect(CORE_OFFSET+1,CORE_OFFSET+1,CORE_SIZE-2,CORE_SIZE-2);
+  }
+  ctx.restore();
+}
+
+function loadImage(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(); };
+    img.src = url;
+  });
+}
+
+// ═══════════════════════════════════════════
+// 6. Main: generate and download
+// ═══════════════════════════════════════════
+
+function log(msg, color = '#888') {
+  const el = document.getElementById('logArea');
+  const d = document.createElement('div');
+  d.style.color = color;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function generate() {
+  const promptText = document.getElementById('promptInput').value.trim();
+  if (!promptText) { log('请输入测试提示词', '#E30022'); return; }
+
+  log('开始生成 Krystal...', '#2979FF');
+
+  const crystalId = crypto.randomUUID();
+  const crystalName = 'Code_Reviewer_Pro';
+  const bandGapLevel = 'safe';
+
+  const payload = {
+    kipVersion: '0.1',
+    crystalId,
+    crystalName,
+    crystalVersion: '1.0.0',
+    crystalTier: 1,
+    author: 'Test Generator',
+    createdAt: new Date().toISOString(),
+    bandGapLevel,
+    facets: {
+      crown:      { name: crystalName, version: '1.0.0', wakeWord: 'Initialize Code Review' },
+      input:      { format: 'markdown', description: 'Code snippet to review', schema: {} },
+      logic:      { systemPrompt: promptText, chain: [] },
+      output:     { format: 'markdown', toneTemplate: 'Professional technical report with severity labels' },
+      inclusion:  { endpoints: ['https://api.openai.com/v1'], knowledgeRefs: [] },
+      correction: { fallbackPrompt: 'Local review mode: focus on static analysis only.', redundancyCode: '' },
+    },
+    fingerprint: { algorithm: 'SHA-256', hash: '', covers: ['visual_pixels', 'json_payload', 'band_gap_color'] },
+  };
+
+  // 1. Render image
+  log('渲染晶体图像...');
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
+  canvas.style.width = '512px';
+  canvas.style.height = '512px';
+
+  await renderKrystal(canvas, payload, null);
+
+  // Show preview
+  const previewArea = document.getElementById('previewArea');
+  const img = new Image();
+  img.src = canvas.toDataURL('image/png');
+  img.style.width = '100%';
+  img.style.maxWidth = '512px';
+  previewArea.innerHTML = '';
+  previewArea.appendChild(img);
+  log('图像渲染完成 ✓', '#0BDA51');
+
+  // 2. Compute fingerprint
+  log('计算 SHA-256 指纹...');
+  const pngBlob = await new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
+  const arrayBuf = await pngBlob.arrayBuffer();
+  const hash = await computeSHA256(arrayBuf);
+  payload.fingerprint.hash = hash;
+  log(`SHA-256: ${hash}`, '#0BDA51');
+
+  // 3. Encode .krys
+  log('注入 kiPl + tEXt 数据块...');
+  const krysBlob = await encodeKrys(pngBlob, payload);
+
+  // 4. Trigger download
+  const url = URL.createObjectURL(krysBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${payload.crystalName}_v${payload.crystalVersion}.krys`;
+  a.click();
+  URL.revokeObjectURL(url);
+  log(`✅ ${a.download} 已下载 (${(krysBlob.size / 1024).toFixed(1)} KB)`, '#0BDA51');
+
+  // 5. Show info
+  document.getElementById('infoArea').innerHTML = `
+    <div style="color:#0BDA51;">Crystal Info</div>
+    <div>名称: ${payload.crystalName}</div>
+    <div>版本: ${payload.crystalVersion}</div>
+    <div>Tier: ${payload.crystalTier}</div>
+    <div>安全: <span class="band-gap-dot" style="background:${BAND_GAP_COLORS[bandGapLevel]}"></span>${bandGapLevel.toUpperCase()}</div>
+    <div>唤醒: ${payload.facets.crown.wakeWord}</div>
+    <div>输入: ${payload.facets.input.format}</div>
+    <div>输出: ${payload.facets.output.format}</div>
+    <div>端点: ${payload.facets.inclusion.endpoints.length} 个</div>
+    <div style="margin-top:6px; font-size:10px; color:#555; word-break:break-all;">
+      ID: ${payload.crystalId.slice(0,20)}…<br>
+      SHA-256: ${hash.slice(0,20)}…
+    </div>
+  `;
+}
+
+async function previewOnly() {
+  const promptText = document.getElementById('promptInput').value.trim();
+  if (!promptText) { log('请输入测试提示词', '#E30022'); return; }
+
+  const payload = {
+    kipVersion: '0.1',
+    crystalId: crypto.randomUUID(),
+    crystalName: 'Code_Reviewer_Pro',
+    crystalVersion: '1.0.0',
+    crystalTier: 1,
+    author: 'Test Generator',
+    createdAt: new Date().toISOString(),
+    bandGapLevel: 'safe',
+    facets: {
+      crown:      { name: 'Code_Reviewer_Pro', version: '1.0.0', wakeWord: 'Initialize Code Review' },
+      input:      { format: 'markdown', description: 'Code snippet to review', schema: {} },
+      logic:      { systemPrompt: promptText, chain: [] },
+      output:     { format: 'markdown', toneTemplate: 'Professional technical report with severity labels' },
+      inclusion:  { endpoints: ['https://api.openai.com/v1'], knowledgeRefs: [] },
+      correction: { fallbackPrompt: 'Local review mode: focus on static analysis only.', redundancyCode: '' },
+    },
+    fingerprint: { algorithm: 'SHA-256', hash: '', covers: ['visual_pixels', 'json_payload', 'band_gap_color'] },
+  };
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
+  await renderKrystal(canvas, payload, null);
+
+  const previewArea = document.getElementById('previewArea');
+  const img = new Image();
+  img.src = canvas.toDataURL('image/png');
+  img.style.width = '100%';
+  img.style.maxWidth = '512px';
+  previewArea.innerHTML = '';
+  previewArea.appendChild(img);
+  log('预览已更新 ✓', '#0BDA51');
+}
+
+document.getElementById('generateBtn').addEventListener('click', generate);
+document.getElementById('previewOnlyBtn').addEventListener('click', previewOnly);
+
+// ═══════════════════════════════════════════
+// 7. Auto preview on load
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  log('测试页面已加载 — 点击按钮生成 .krys 文件', '#888');
+  setTimeout(previewOnly, 500);
+});
+</script>
+</body>
+</html>
