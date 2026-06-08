@@ -9,6 +9,12 @@
  *   Layer 2 — Band Gap (带隙): 1-2px security color halo around Core
  *   Layer 3 — 6 Facets (六晶面): Border regions with Data Filigree + text anchors
  *
+ * The output image is designed to be:
+ *   1. Visually beautiful — vibrant gemstone aesthetic
+ *   2. Human-readable — clearly shows crystal name, band gap, purpose
+ *   3. AI-readable — large enough text for multimodal vision models to OCR
+ *   4. Machine-decodable — payload embedded as PNG tEXt/kiPl chunks
+ *
  * Author: Emberois | SPEC-KIP-0.1
  */
 
@@ -25,8 +31,19 @@ const CORE_RATIO = Math.sqrt(0.40);
 export const CORE_SIZE = Math.floor(CANVAS_SIZE * CORE_RATIO);   // ≈ 648px
 export const CORE_OFFSET = Math.floor((CANVAS_SIZE - CORE_SIZE) / 2); // ≈ 188px
 
-const ANCHOR_SIZE = 2; // Quadrant Lock Anchor — 2×2 pixel
-const BAND_GAP_WIDTH = 2; // px
+const ANCHOR_SIZE = 2;
+const BAND_GAP_WIDTH = 3; // bumped from 2px for visibility
+
+// Padding within facet regions
+const SIDE_H = CORE_SIZE / 2;           // 324px — half the core height
+const TOP_H = CORE_OFFSET;              // ≈ 188px — top panel height
+const BOT_H = CORE_OFFSET;              // ≈ 188px — bottom panel height
+
+// Font sizes (readable by AI vision models on 1024px canvas)
+const FONT_LABEL    = 'bold 13px "Share Tech Mono", monospace';
+const FONT_TITLE    = 'bold 16px "Share Tech Mono", monospace';
+const FONT_CONTENT  = '11px "Share Tech Mono", monospace';
+const FONT_SMALL    =  '9px "Share Tech Mono", monospace';
 
 // ─────────────────────────────────────────────
 // Google Font (loaded once)
@@ -48,64 +65,115 @@ async function ensureFont(): Promise<void> {
 }
 
 // ─────────────────────────────────────────────
-// Filigree / Data Stripes renderer (Data Filigree effect)
+// Helper: draw wrapped text with clipping
 // ─────────────────────────────────────────────
 
-function drawDataFiligree(
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxW: number,
+  maxH: number,
+  font: string,
+  color: string,
+  lineH: number,
+  truncate?: string,
+) {
+  ctx.save();
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.rect(x, y - lineH, maxW, maxH + 4);
+  ctx.clip();
+
+  const words = text.split(' ');
+  let line = '';
+  let ly = y;
+
+  for (const word of words) {
+    const test = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxW && line) {
+      if (ly + lineH > y + maxH) {
+        if (truncate) {
+          // Show truncation marker
+          ctx.fillText((line.slice(0, -1) + '…') || '…', x, ly);
+        }
+        break;
+      }
+      ctx.fillText(line, x, ly);
+      line = word;
+      ly += lineH;
+    } else {
+      line = test;
+    }
+  }
+  if (line && ly <= y + maxH) ctx.fillText(line, x, ly);
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────
+// Draw a facet panel with label, content, and filigree
+// ─────────────────────────────────────────────
+
+function drawFacetPanel(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  text: string,
-  anchorLabel: string,
+  label: string,
+  content: string,
   accentColor: string,
 ) {
   ctx.save();
 
-  // Background — very dark with subtle color tint
-  ctx.fillStyle = `rgba(8,8,16,0.92)`;
+  // Panel background — dark but with subtle accent tint
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, `rgba(10,10,24,0.95)`);
+  grad.addColorStop(0.5, `rgba(16,12,28,0.92)`);
+  grad.addColorStop(1, `rgba(8,8,18,0.95)`);
+  ctx.fillStyle = grad;
   ctx.fillRect(x, y, w, h);
 
-  // Stripe lines (Data Filigree aesthetic)
-  ctx.strokeStyle = `${accentColor}22`; // very faint
+  // Thin accent border on the interior edge
+  ctx.strokeStyle = `${accentColor}33`;
   ctx.lineWidth = 1;
-  for (let i = 0; i < h; i += 4) {
+  ctx.strokeRect(x, y, w, h);
+
+  // Label with glow
+  ctx.font = FONT_LABEL;
+  ctx.fillStyle = accentColor;
+  ctx.shadowColor = accentColor;
+  ctx.shadowBlur = 8;
+  ctx.fillText(label, x + 6, y + 16);
+  ctx.shadowBlur = 0;
+
+  // Subtle filigree lines (data stripe aesthetic)
+  ctx.strokeStyle = `${accentColor}15`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < h; i += 6) {
     ctx.beginPath();
     ctx.moveTo(x, y + i);
     ctx.lineTo(x + w, y + i);
     ctx.stroke();
   }
 
-  // Anchor label — bold, glowing
-  ctx.font = 'bold 10px "Share Tech Mono", monospace';
-  ctx.fillStyle = accentColor;
-  ctx.shadowColor = accentColor;
-  ctx.shadowBlur = 6;
-  ctx.fillText(anchorLabel, x + 6, y + 14);
-  ctx.shadowBlur = 0;
+  // Content text
+  const contentX = x + 6;
+  const contentY = y + 28;
+  const maxW = w - 12;
+  const maxH = h - 32;
 
-  // Content text — wrap tightly in the facet region
-  ctx.font = '8px "Share Tech Mono", monospace';
-  ctx.fillStyle = `${accentColor}CC`;
-  const maxWidth = w - 12;
-  const lineH = 10;
-  const words = text.split(' ');
-  let line = '';
-  let ly = y + 26;
-
-  for (const word of words) {
-    const test = line + (line ? ' ' : '') + word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x + 6, ly);
-      line = word;
-      ly += lineH;
-      if (ly > y + h - 8) break;
-    } else {
-      line = test;
-    }
+  if (maxW > 20 && maxH > 12) {
+    drawWrappedText(
+      ctx, content || '—',
+      contentX, contentY, maxW, maxH,
+      FONT_CONTENT, `${accentColor}CC`,
+      13, '…',
+    );
   }
-  if (line && ly <= y + h - 8) ctx.fillText(line, x + 6, ly);
 
   ctx.restore();
 }
@@ -123,42 +191,61 @@ function drawQuadrantAnchors(ctx: CanvasRenderingContext2D) {
 
   const positions = [
     // Canvas corners
-    { x: 0,           y: 0 },
-    { x: S - A,       y: 0 },
-    { x: 0,           y: S - A },
-    { x: S - A,       y: S - A },
+    { x: 0,       y: 0 },
+    { x: S - A,   y: 0 },
+    { x: 0,       y: S - A },
+    { x: S - A,   y: S - A },
     // Core corners (facet intersections)
-    { x: CO,          y: CO },
-    { x: CO + CS,     y: CO },
-    { x: CO,          y: CO + CS },
-    { x: CO + CS,     y: CO + CS },
+    { x: CO,      y: CO },
+    { x: CO + CS, y: CO },
+    { x: CO,      y: CO + CS },
+    { x: CO + CS, y: CO + CS },
   ];
 
   positions.forEach(p => ctx.fillRect(p.x, p.y, A, A));
 }
 
 // ─────────────────────────────────────────────
-// Band Gap Halo
+// Band Gap Halo — security level indicator
 // ─────────────────────────────────────────────
 
-function drawBandGap(ctx: CanvasRenderingContext2D, color: string) {
+function drawBandGap(ctx: CanvasRenderingContext2D, color: string, label: string) {
   ctx.save();
+
+  // Outer glow
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 20;
   ctx.strokeStyle = color;
   ctx.lineWidth = BAND_GAP_WIDTH;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 12;
-  ctx.strokeRect(
-    CORE_OFFSET - BAND_GAP_WIDTH / 2,
-    CORE_OFFSET - BAND_GAP_WIDTH / 2,
-    CORE_SIZE + BAND_GAP_WIDTH,
-    CORE_SIZE + BAND_GAP_WIDTH,
-  );
+
+  // Core-sized rectangle (the Band Gap surrounds the Core)
+  const x = CORE_OFFSET - 1;
+  const y = CORE_OFFSET - 1;
+  const s = CORE_SIZE + 2;
+  ctx.strokeRect(x, y, s, s);
+
+  // Second pass for intensity
   ctx.shadowBlur = 0;
+  ctx.strokeStyle = `${color}88`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 1, y - 1, s + 2, s + 2);
+
+  // Band Gap label — top-right of core
+  ctx.font = FONT_LABEL;
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  const labelX = CORE_OFFSET + CORE_SIZE - 4;
+  ctx.textAlign = 'right';
+  ctx.fillText(label.toUpperCase(), labelX, CORE_OFFSET - 10);
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 0;
+
   ctx.restore();
 }
 
 // ─────────────────────────────────────────────
-// Core (晶核) — draw sigil image or gradient
+// Core (晶核) — draw sigil image or gemstone
 // ─────────────────────────────────────────────
 
 async function drawCore(
@@ -190,67 +277,68 @@ async function drawCore(
     const cx = CANVAS_SIZE / 2;
     const cy = CANVAS_SIZE / 2;
     const r = CORE_SIZE / 2;
-    const facets = 8; // 8-fold symmetry
+    const facets = 8;
 
-    // Background: deep crystalline gradient
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0,   '#2a2a4a');
-    grad.addColorStop(0.3, '#1a1a36');
-    grad.addColorStop(0.6, '#0d0d1a');
-    grad.addColorStop(1,   '#06060e');
-    ctx.fillStyle = grad;
+    // Deep crystalline background
+    const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    bgGrad.addColorStop(0,   '#1a1a3a');
+    bgGrad.addColorStop(0.3, '#12122a');
+    bgGrad.addColorStop(0.7, '#0a0a1a');
+    bgGrad.addColorStop(1,   '#050510');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(CORE_OFFSET, CORE_OFFSET, CORE_SIZE, CORE_SIZE);
 
-    // Faceted gemstone faces (8 triangular wedges)
+    // 8-fold gemstone faces with higher contrast
     for (let i = 0; i < facets; i++) {
-      const angleA = (i / facets) * Math.PI * 2;
-      const angleB = ((i + 0.5) / facets) * Math.PI * 2;
-      const angleC = ((i + 1) / facets) * Math.PI * 2;
+      const a0 = (i / facets) * Math.PI * 2;
+      const a1 = ((i + 0.5) / facets) * Math.PI * 2;
+      const a2 = ((i + 1) / facets) * Math.PI * 2;
 
+      // First triangle (inner half)
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(angleA) * r, cy + Math.sin(angleA) * r);
-      ctx.lineTo(cx + Math.cos(angleB) * r * 0.95, cy + Math.sin(angleB) * r * 0.95);
+      ctx.lineTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+      ctx.lineTo(cx + Math.cos(a1) * r * 0.9, cy + Math.sin(a1) * r * 0.9);
       ctx.closePath();
-
-      // Alternate lighting intensity per facet
-      const brightness = 0.3 + (i % 2) * 0.25;
-      ctx.fillStyle = `${accent}${Math.floor(brightness * 40).toString(16).padStart(2, '0')}`;
+      const b1 = 0.35 + (i % 2) * 0.35;
+      ctx.fillStyle = `${accent}${Math.floor(b1 * 55).toString(16).padStart(2, '0')}`;
       ctx.fill();
 
+      // Second triangle (outer half)
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(angleB) * r * 0.95, cy + Math.sin(angleB) * r * 0.95);
-      ctx.lineTo(cx + Math.cos(angleC) * r, cy + Math.sin(angleC) * r);
+      ctx.lineTo(cx + Math.cos(a1) * r * 0.9, cy + Math.sin(a1) * r * 0.9);
+      ctx.lineTo(cx + Math.cos(a2) * r, cy + Math.sin(a2) * r);
       ctx.closePath();
-
-      const brightness2 = 0.2 + ((i + 1) % 2) * 0.15;
-      ctx.fillStyle = `${accent}${Math.floor(brightness2 * 30).toString(16).padStart(2, '0')}`;
+      const b2 = 0.25 + ((i + 1) % 2) * 0.25;
+      ctx.fillStyle = `${accent}${Math.floor(b2 * 50).toString(16).padStart(2, '0')}`;
       ctx.fill();
     }
 
-    // Shimmer highlight (cross-shaped light reflection)
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    // Star shimmer highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
     ctx.lineWidth = 2;
     for (let i = 0; i < 4; i++) {
       const angle = (i / 4) * Math.PI + Math.PI / 8;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(angle) * r * 0.7, cy + Math.sin(angle) * r * 0.7);
+      ctx.lineTo(cx + Math.cos(angle) * r * 0.6, cy + Math.sin(angle) * r * 0.6);
       ctx.stroke();
     }
 
-    // Outer edge glow
-    ctx.strokeStyle = `${accent}44`;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(CORE_OFFSET + 1, CORE_OFFSET + 1, CORE_SIZE - 2, CORE_SIZE - 2);
-
-    // Inner accent pulsing ring
+    // Center bright spot
+    const spotGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.3);
+    spotGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+    spotGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spotGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
-    ctx.strokeStyle = `${accent}22`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer edge glow
+    ctx.strokeStyle = `${accent}55`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(CORE_OFFSET + 1, CORE_OFFSET + 1, CORE_SIZE - 2, CORE_SIZE - 2);
   }
 
   ctx.restore();
@@ -279,69 +367,106 @@ export class SigilForge {
   /**
    * Render a full Krystal image based on the given payload.
    * Returns a PNG Blob of the rendered image (before chunk injection).
+   *
+   * The image is designed to:
+   *   - Be a beautiful, self-contained visual artifact
+   *   - Display all key crystal info as readable text
+   *   - Be OCR-able by multimodal AI vision models
+   *   - Serve as the container for embedded payload chunks
    */
   async forge(options: ForgeOptions): Promise<Blob> {
     await ensureFont();
     const { payload, sigilImageBlob } = options;
 
-    const accentColor = BAND_GAP_COLORS[payload.bandGapLevel];
+    const accentColor = BAND_GAP_COLORS[payload.bandGapLevel] ?? '#0BDA51';
     const ctx = this.ctx;
     const S = CANVAS_SIZE;
     const CO = CORE_OFFSET;
     const CS = CORE_SIZE;
 
-    // ── Background ──────────────────────────────
-    ctx.fillStyle = '#080810';
+    // ── 1. Background ──────────────────────────
+    // Dark gradient with subtle blue undertone
+    const bgGrad = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    bgGrad.addColorStop(0, '#15152a');
+    bgGrad.addColorStop(0.6, '#0d0d1c');
+    bgGrad.addColorStop(1, '#06060e');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, S, S);
 
-    // ── Six Facets (Data Filigree borders) ──────
+    // ── 2. Six Facets ──────────────────────────
 
-    // Crown Facet (top)
-    drawDataFiligree(ctx, CO, 0, CS, CO, payload.facets.crown.name, '[CROWN]', accentColor);
+    // Top: Crown Facet (188px high, same width as Core)
+    // Crystal name + version rendered as header-style text in center
+    ctx.save();
+    ctx.fillStyle = `${accentColor}22`;
+    ctx.fillRect(CO, 0, CS, TOP_H);
+    // Name header with glow
+    ctx.font = FONT_TITLE;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = accentColor;
+    ctx.shadowColor = accentColor;
+    ctx.shadowBlur = 12;
+    ctx.fillText(`${payload.crystalName}`, S / 2, TOP_H / 2 + 4);
+    ctx.shadowBlur = 0;
+    ctx.font = FONT_CONTENT;
+    ctx.fillStyle = `${accentColor}AA`;
+    ctx.fillText(`v${payload.crystalVersion} · ${payload.facets.crown.wakeWord || '—'} · Tier ${payload.crystalTier}`, S / 2, TOP_H / 2 + 22);
+    ctx.textAlign = 'left';
+    ctx.restore();
 
-    // Input Facet (upper-right)
-    drawDataFiligree(ctx, CO + CS, 0, S - CO - CS, S / 2, payload.facets.input.format, '[INPUT]', accentColor);
+    // Upper-left: Correction Facet
+    drawFacetPanel(ctx, 0, 0, CO, SIDE_H, '[CORRECTION]',
+      payload.facets.correction.fallbackPrompt.slice(0, 200), accentColor);
 
-    // Logic Facet (lower-right) — 40% info density
-    drawDataFiligree(ctx, CO + CS, S / 2, S - CO - CS, S / 2, payload.facets.logic.systemPrompt, '[LOGIC]', accentColor);
+    // Upper-right: Input Facet
+    drawFacetPanel(ctx, CO + CS, 0, S - CO - CS, SIDE_H, '[INPUT]',
+      payload.facets.input.format + (payload.facets.input.description ? ': ' + payload.facets.input.description : ''),
+      accentColor);
 
-    // Output Facet (bottom)
-    drawDataFiligree(ctx, CO, CO + CS, CS, S - CO - CS, payload.facets.output.toneTemplate, '[OUTPUT]', accentColor);
+    // Lower-left: Inclusion Facet
+    drawFacetPanel(ctx, 0, SIDE_H, CO, SIDE_H, '[INCLUSION]',
+      (payload.facets.inclusion.endpoints.length > 0
+        ? payload.facets.inclusion.endpoints.join('\n')
+        : '—'),
+      accentColor);
 
-    // Inclusion Facet (lower-left)
-    drawDataFiligree(ctx, 0, S / 2, CO, S / 2, payload.facets.inclusion.endpoints.join(', ') || '—', '[INCLUSION]', accentColor);
+    // Lower-right: Logic Facet (40% density — longest content)
+    drawFacetPanel(ctx, CO + CS, SIDE_H, S - CO - CS, SIDE_H, '[LOGIC]',
+      payload.facets.logic.systemPrompt.slice(0, 400), accentColor);
 
-    // Correction Facet (upper-left)
-    drawDataFiligree(ctx, 0, 0, CO, S / 2, payload.facets.correction.fallbackPrompt, '[CORRECTION]', accentColor);
+    // Bottom: Output Facet
+    drawFacetPanel(ctx, CO, CO + CS, CS, BOT_H, '[OUTPUT]',
+      `Format: ${payload.facets.output.format}` +
+        (payload.facets.output.toneTemplate ? ` | ${payload.facets.output.toneTemplate}` : ''),
+      accentColor);
 
-    // ── Quadrant Lock Anchors (#FF00FF 2×2px) ───
+    // ── 3. Quadrant Lock Anchors ───────────────
     drawQuadrantAnchors(ctx);
 
-    // ── Core (晶核) ─────────────────────────────
+    // ── 4. Core (晶核) ─────────────────────────
     let sigilImg: HTMLImageElement | null = null;
     if (sigilImageBlob) {
       sigilImg = await this.loadImage(sigilImageBlob);
     }
     await drawCore(ctx, sigilImg, accentColor);
 
-    // ── Band Gap halo ────────────────────────────
-    drawBandGap(ctx, accentColor);
+    // ── 5. Band Gap halo ───────────────────────
+    drawBandGap(ctx, accentColor, payload.bandGapLevel);
 
-    // ── Crown text overlay ───────────────────────
+    // ── Footer: Fingerprint line ──────────────
     ctx.save();
-    ctx.font = 'bold 12px "Share Tech Mono", monospace';
-    ctx.fillStyle = accentColor;
-    ctx.shadowColor = accentColor;
-    ctx.shadowBlur = 8;
+    ctx.font = FONT_SMALL;
+    ctx.fillStyle = `${accentColor}66`;
     ctx.textAlign = 'center';
-    ctx.fillText(`${payload.crystalName} v${payload.crystalVersion}`, S / 2, CO / 2 + 5);
-    ctx.font = '9px "Share Tech Mono", monospace';
-    ctx.fillStyle = `${accentColor}99`;
-    ctx.fillText(payload.facets.crown.wakeWord, S / 2, CO / 2 + 20);
-    ctx.shadowBlur = 0;
+    const fp = payload.fingerprint.hash;
+    ctx.fillText(
+      `KIP v${payload.kipVersion} · ${payload.bandGapLevel.toUpperCase()} · SHA-256 ${fp ? fp.slice(0, 16) + '…' : 'pending'}`,
+      S / 2, S - 6,
+    );
     ctx.textAlign = 'left';
     ctx.restore();
 
+    // ── Export to PNG Blob ─────────────────────
     return new Promise<Blob>(resolve => {
       this.canvas.toBlob(blob => resolve(blob!), 'image/png', 1.0);
     });
