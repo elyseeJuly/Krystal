@@ -4,11 +4,22 @@
 
 **An open standard for encapsulating AI capabilities into visually-encoded, self-contained executable files.**
 
+[![Status](https://img.shields.io/badge/Status-Archived-inactive?style=for-the-badge)](https://github.com/elyseeJuly/Krystal)
 [![Spec Version](https://img.shields.io/badge/SPEC-KIP_0.1_(Draft)-blueviolet?style=for-the-badge)](./SPEC-KIP-0.1.md)
 [![License](https://img.shields.io/badge/License-CC_BY--SA_4.0-orange?style=for-the-badge)](./LICENSE)
 [![Author](https://img.shields.io/badge/Author-Emberois-teal?style=for-the-badge)](https://github.com/elyseeJuly)
 
 </div>
+
+---
+
+> ## ⚠️ 已归档 / Archived
+>
+> **本项目为实验级作品。技术层面的实际实现与理想设计之间存在巨大差距，因此选择将仓库归档，仅作为学习与参考用途保留。**
+>
+> **This is an experimental-grade project. There is a substantial gap between the technical implementation and the ideal design; the repository has therefore been archived and is preserved for learning and reference purposes only.**
+>
+> 归档后仓库为只读状态，不再接受 Issue、Pull Request 或任何形式的更新。
 
 ---
 
